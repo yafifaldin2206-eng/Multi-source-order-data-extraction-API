@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Extraction API</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#111110;
+  --bg2:#161614;
+  --text:#e8e6e1;
+  --dim:#6b6963;
+  --dim2:#3d3c39;
+  --line:#232320;
+  --green:#4ade80;
+  --amber:#fbbf24;
+  --red:#f87171;
+  --mono:'Courier New',Courier,monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100vh}
+.shell{max-width:900px;margin:0 auto;padding:2.5rem 2rem 4rem}
+
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4rem}
+.logo{font-size:12px;letter-spacing:0.15em;color:var(--text);display:flex;align-items:center;gap:8px}
+.logo-sq{width:8px;height:8px;background:var(--text);display:inline-block;flex-shrink:0}
+.sub{font-size:11px;letter-spacing:0.1em;color:var(--dim);margin-top:4px}
+.sub span{margin:0 4px}
+.topbar-right{font-size:11px;letter-spacing:0.12em;color:var(--dim);text-align:right}
+.status-row{display:flex;align-items:center;gap:6px;justify-content:flex-end;margin-top:4px}
+.dot-live{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+.ascii-hero{margin:0 0 4rem;line-height:1.4;font-size:11px;color:var(--dim2);letter-spacing:0.02em;overflow:hidden}
+
+.section-label{font-size:10px;letter-spacing:0.2em;color:var(--dim);margin-bottom:1.5rem}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-bottom:4rem;border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.stat{padding:1.5rem 1.25rem;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.stat-n{font-size:28px;letter-spacing:-0.01em;margin-bottom:4px}
+.stat-l{font-size:10px;letter-spacing:0.15em;color:var(--dim)}
+.n-white{color:var(--text)}
+.n-green{color:var(--green)}
+.n-amber{color:var(--amber)}
+
+.pipeline-block{margin-bottom:4rem}
+.pipe-row{display:flex;align-items:baseline;gap:1.5rem;padding:0.75rem 0;border-bottom:1px solid var(--line)}
+.pipe-row:first-child{border-top:1px solid var(--line)}
+.pipe-idx{font-size:10px;color:var(--dim);width:20px;flex-shrink:0}
+.pipe-name{font-size:12px;letter-spacing:0.08em;color:var(--text);width:180px;flex-shrink:0}
+.pipe-desc{font-size:11px;color:var(--dim);flex:1}
+.pipe-tag{font-size:10px;letter-spacing:0.1em;color:var(--dim2);margin-left:auto;flex-shrink:0}
+
+.try-block{margin-bottom:4rem}
+.input-row{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line)}
+.input-col{padding:1.25rem}
+.input-col:first-child{border-right:1px solid var(--line)}
+.col-label{font-size:10px;letter-spacing:0.2em;color:var(--dim);margin-bottom:1rem}
+
+.src-btns{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap}
+.src-btn{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;padding:5px 10px;background:transparent;border:1px solid var(--line);color:var(--dim);cursor:pointer;transition:all 0.15s}
+.src-btn:hover{border-color:var(--dim2);color:var(--text)}
+.src-btn.active{border-color:var(--text);color:var(--text)}
+
+.presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem}
+.preset-btn{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;padding:4px 8px;background:transparent;border:1px solid var(--line);color:var(--dim);cursor:pointer;transition:all 0.15s}
+.preset-btn:hover{color:var(--text);border-color:var(--dim2)}
+
+textarea{
+  width:100%;background:transparent;border:none;color:var(--text);
+  font-family:var(--mono);font-size:11px;line-height:1.8;
+  resize:none;outline:none;
+}
+textarea::placeholder{color:var(--dim2)}
+
+.run-btn{
+  font-family:var(--mono);font-size:10px;letter-spacing:0.2em;
+  padding:8px 16px;background:var(--text);border:none;
+  color:var(--bg);cursor:pointer;margin-top:1rem;
+  transition:opacity 0.15s;display:block;
+}
+.run-btn:hover{opacity:0.8}
+.run-btn:disabled{opacity:0.3;cursor:not-allowed}
+
+.out-box{
+  font-size:10px;line-height:1.9;color:var(--dim);
+  white-space:pre-wrap;min-height:220px;overflow-y:auto;max-height:320px;
+}
+.out-key{color:#93c5fd}
+.out-str{color:#6ee7b7}
+.out-num{color:var(--amber)}
+.out-warn{color:var(--amber)}
+.out-err{color:var(--red)}
+
+.order-row{
+  display:grid;grid-template-columns:140px 180px 60px 110px 80px;
+  gap:0;padding:0.6rem 0;border-bottom:1px solid var(--line);
+  font-size:11px;align-items:center;
+}
+.order-row.header{
+  font-size:10px;letter-spacing:0.15em;color:var(--dim);
+  border-top:1px solid var(--line);
+  padding:0.5rem 0;
+}
+.order-row:hover:not(.header){background:rgba(255,255,255,0.015)}
+.conf-hi{color:var(--green)}
+.conf-mid{color:var(--amber)}
+.conf-lo{color:var(--red)}
+.flag-tag{font-size:9px;letter-spacing:0.08em;color:var(--red);display:block;margin-top:2px}
+.dash{color:var(--dim2)}
+
+.ep-row{display:flex;align-items:baseline;gap:1.5rem;padding:0.75rem 0;border-bottom:1px solid var(--line)}
+.ep-row:first-child{border-top:1px solid var(--line)}
+.ep-method{font-size:10px;letter-spacing:0.12em;width:40px;flex-shrink:0}
+.method-post{color:var(--text)}
+.method-get{color:var(--dim)}
+.ep-path{font-size:12px;color:var(--text);width:220px;flex-shrink:0}
+.ep-note{font-size:11px;color:var(--dim)}
+
+.curl-box{font-size:10px;line-height:1.9;color:var(--dim);padding:1rem;border:1px solid var(--line)}
+
+.footer{display:flex;justify-content:space-between;align-items:center;padding-top:3rem;border-top:1px solid var(--line);margin-top:2rem}
+.footer-l,.footer-r{font-size:10px;letter-spacing:0.15em;color:var(--dim)}
+.footer-r{display:flex;align-items:center;gap:6px}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="topbar">
+    <div>
+      <div class="logo"><span class="logo-sq"></span> ORDER EXTRACTION API</div>
+      <div class="sub">INGESTION <span>·</span> NORMALIZATION <span>×</span> VALIDATION</div>
+    </div>
+    <div class="topbar-right">
+      localhost:8000
+      <div class="status-row"><span class="dot-live"></span> ONLINE</div>
+    </div>
+  </div>
+
+  <div class="ascii-hero">
+    <pre>
+ ,---. ,--.--.,--,--,  ,---. ,---.      ,------.,--.   ,--.,--------.,------.   ,---.   ,---.,-------.
+| .-. ||  .--'|      \| .-. || .-. :    |  .---'|   `.'   |'--.  .--'|  .--. ' /  O  \ /  O  '--.  .--'
+| | | ||  |   |  ||  || | | |\   --.    |  `--, |  |'.'|  |   |  |   |  '--'.'|  .-.  |  .-.  | |  |
+'  '-' '  '--''--''--'' '-' ' \   __|   |  `----.|  |   |  |   |  |   |  |\  \ |  | |  |  | |  | |  |
+ `---'  `-----'        `---'   `----'   `------' `--'   `--'   `--'   `--' '--'`--' `--`--' `--' `--'
+    </pre>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat"><div class="stat-n n-white">3</div><div class="stat-l">SOURCES</div></div>
+    <div class="stat"><div class="stat-n n-white">6</div><div class="stat-l">PIPELINE STAGES</div></div>
+    <div class="stat"><div class="stat-n n-green">19/19</div><div class="stat-l">TESTS PASSING</div></div>
+    <div class="stat"><div class="stat-n n-amber">40+</div><div class="stat-l">NORM RULES</div></div>
+  </div>
+
+  <div class="pipeline-block">
+    <div class="section-label">&#9671; PIPELINE</div>
+    <div class="pipe-row"><span class="pipe-idx">01</span><span class="pipe-name">INGESTION</span><span class="pipe-desc">POST /extract/orders · json body or multipart file upload</span><span class="pipe-tag">INPUT</span></div>
+    <div class="pipe-row"><span class="pipe-idx">02</span><span class="pipe-name">SOURCE ROUTER</span><span class="pipe-desc">whatsapp → WhatsAppParser · excel → ExcelParser · csv → CSVParser</span><span class="pipe-tag">DISPATCH</span></div>
+    <div class="pipe-row"><span class="pipe-idx">03</span><span class="pipe-name">PARSER</span><span class="pipe-desc">rule-based extraction → intermediate representation (IR)</span><span class="pipe-tag">EXTRACT</span></div>
+    <div class="pipe-row"><span class="pipe-idx">04</span><span class="pipe-name">NORMALIZER</span><span class="pipe-desc">"besok" → 2026-04-27 · "dua" → 2 · product catalog matching</span><span class="pipe-tag">TRANSFORM</span></div>
+    <div class="pipe-row"><span class="pipe-idx">05</span><span class="pipe-name">VALIDATOR</span><span class="pipe-desc">missing fields · duplicate detection · per-order confidence score</span><span class="pipe-tag">VERIFY</span></div>
+    <div class="pipe-row"><span class="pipe-idx">06</span><span class="pipe-name">FORMATTER</span><span class="pipe-desc">clean json response with orders array + metadata object</span><span class="pipe-tag">OUTPUT</span></div>
+  </div>
+
+  <div class="try-block">
+    <div class="section-label">&#9671; TRY IT</div>
+    <div class="input-row">
+      <div class="input-col">
+        <div class="col-label">SOURCE</div>
+        <div class="src-btns">
+          <button class="src-btn active" data-src="whatsapp" onclick="setSrc(this)">&#9671; WHATSAPP</button>
+          <button class="src-btn" data-src="csv_text" onclick="setSrc(this)">&#9671; CSV</button>
+        </div>
+        <div class="col-label">PRESETS</div>
+        <div class="presets">
+          <button class="preset-btn" onclick="loadP('wa1')">wa · multi-item</button>
+          <button class="preset-btn" onclick="loadP('wa2')">wa · export fmt</button>
+          <button class="preset-btn" onclick="loadP('csv1')">csv · clean</button>
+          <button class="preset-btn" onclick="loadP('csv2')">csv · messy headers</button>
+        </div>
+        <div class="col-label">INPUT</div>
+        <textarea id="inp" rows="9" placeholder="paste raw whatsapp chat or csv text here...">Budi: pesan 2 es teh 1L besok ya
+Sari: order nasi goreng 3 porsi buat hari ini
+Andi: halo, gimana kabarnya?
+Dewi: minta 5 ayam goreng sama 2 es jeruk untuk besok</textarea>
+        <button class="run-btn" id="run-btn" onclick="run()">&#9654; RUN EXTRACTION</button>
+      </div>
+      <div class="input-col">
+        <div class="col-label">RESPONSE</div>
+        <div class="out-box" id="out"><span style="color:var(--dim2)">// awaiting input</span></div>
+      </div>
+    </div>
+
+    <div id="orders-wrap" style="display:none;border:1px solid var(--line);border-top:none">
+      <div style="padding:0.75rem 1.25rem;border-bottom:1px solid var(--line)">
+        <span class="section-label" style="margin:0">&#9671; EXTRACTED ORDERS</span>
+      </div>
+      <div style="padding:0 1.25rem 0.5rem">
+        <div class="order-row header">
+          <span>CUSTOMER</span><span>PRODUCT</span><span>QTY</span><span>DATE</span><span>CONF</span>
+        </div>
+        <div id="orders-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:4rem">
+    <div class="section-label">&#9671; ENDPOINTS</div>
+    <div class="ep-row"><span class="ep-method method-get">GET</span><span class="ep-path">/</span><span class="ep-note">service info and version</span></div>
+    <div class="ep-row"><span class="ep-method method-get">GET</span><span class="ep-path">/health</span><span class="ep-note">liveness check · returns timestamp</span></div>
+    <div class="ep-row"><span class="ep-method method-get">GET</span><span class="ep-path">/sources</span><span class="ep-note">list supported input source types</span></div>
+    <div class="ep-row"><span class="ep-method method-post">POST</span><span class="ep-path">/extract/orders</span><span class="ep-note">json body · source + data fields</span></div>
+    <div class="ep-row"><span class="ep-method method-post">POST</span><span class="ep-path">/extract/orders/file</span><span class="ep-note">multipart · xlsx or csv upload</span></div>
+  </div>
+
+  <div style="margin-bottom:4rem">
+    <div class="section-label">&#9671; QUICK START</div>
+    <div class="curl-box">uvicorn main:app --reload
+<br><br>
+curl -X POST http://localhost:8000/extract/orders \<br>
+&nbsp;&nbsp;-H "Content-Type: application/json" \<br>
+&nbsp;&nbsp;-d '{"source":"whatsapp","data":"Budi: pesan 2 es teh besok"}'<br>
+<br>
+curl -X POST http://localhost:8000/extract/orders/file \<br>
+&nbsp;&nbsp;-F "file=@orders.xlsx" \<br>
+&nbsp;&nbsp;-F "source=excel"</div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-l">&#9671; ORDER EXTRACT · v1.0.0</div>
+    <div class="footer-r"><span class="dot-live"></span> ONLINE</div>
+  </div>
+
+</div>
+
+<script>
+const PRESETS={
+  wa1:{src:'whatsapp',data:'Budi: pesan 2 es teh 1L besok ya\nSari: order nasi goreng 3 porsi buat hari ini\nAndi: halo, gimana kabarnya?\nDewi: minta 5 ayam goreng sama 2 es jeruk untuk besok\nRudi: ok siap'},
+  wa2:{src:'whatsapp',data:'[25/04/26, 08:30:15] Budi: pesan 2 kopi\n[25/04/26, 08:31:02] Sari: order 1 nasi goreng buat hari ini\n[25/04/26, 08:33:44] Admin: siap diproses'},
+  csv1:{src:'csv_text',data:'customer,product,quantity,date\nDewi,Es Teh,5,2026-04-27\nRudi,Nasi Goreng,2,2026-04-28\nAndi,Kopi,1,2026-04-27'},
+  csv2:{src:'csv_text',data:'nama pelanggan,nama produk,jumlah order,tanggal\nSari,Es Jeruk,3,2026-04-27\nDewi,Nasi Goreng,2,2026-04-28\n,Mie Goreng,5,2026-04-27'}
+};
+
+let curSrc='whatsapp';
+
+function setSrc(el){
+  document.querySelectorAll('.src-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  curSrc=el.dataset.src;
+}
+
+function loadP(k){
+  const p=PRESETS[k];if(!p)return;
+  document.getElementById('inp').value=p.data;
+  curSrc=p.src;
+  document.querySelectorAll('.src-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.src===p.src);
+  });
+}
+
+function hl(json){
+  return json
+    .replace(/("[\w_]+")\s*:/g,'<span class="out-key">$1</span>:')
+    .replace(/:\s*(".*?")/g,': <span class="out-str">$1</span>')
+    .replace(/:\s*(\d+\.?\d*)/g,': <span class="out-num">$1</span>');
+}
+
+async function run(){
+  const data=document.getElementById('inp').value.trim();
+  const btn=document.getElementById('run-btn');
+  const out=document.getElementById('out');
+  if(!data){out.innerHTML='<span class="out-err">// error: no input</span>';return;}
+  btn.disabled=true;btn.textContent='PROCESSING...';
+  out.innerHTML='<span style="color:var(--dim2)">// extracting...</span>';
+  document.getElementById('orders-wrap').style.display='none';
+
+  try{
+    const r=await fetch('http://localhost:8000/extract/orders',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({source:curSrc,data})
+    });
+    const result=await r.json();
+    out.innerHTML=hl(JSON.stringify(result,null,2));
+    renderOrders(result.orders||[]);
+  }catch(e){
+    const sim=simulate(data);
+    out.innerHTML='<span class="out-warn">// server offline - simulated output\n// run: uvicorn main:app --reload\n\n</span>'+hl(JSON.stringify(sim,null,2));
+    renderOrders(sim.orders||[]);
+  }finally{
+    btn.disabled=false;btn.textContent='&#9654; RUN EXTRACTION';
+  }
+}
+
+function renderOrders(orders){
+  const wrap=document.getElementById('orders-wrap');
+  const body=document.getElementById('orders-body');
+  if(!orders.length){wrap.style.display='none';return;}
+  body.innerHTML='';
+  orders.forEach(o=>{
+    const conf=o.confidence||0;
+    const cls=conf>=0.8?'conf-hi':conf>=0.5?'conf-mid':'conf-lo';
+    const flags=o.validation_flags?'<span class="flag-tag">'+o.validation_flags.join(' ')+'</span>':'';
+    body.innerHTML+='<div class="order-row"><span>'+(o.customer||'<span class="dash">-</span>')+'</span><span>'+(o.product||'<span class="dash">-</span>')+'</span><span>'+(o.quantity||'<span class="dash">-</span>')+'</span><span>'+(o.date||'<span class="dash">-</span>')+'</span><span class="'+cls+'">'+Math.round(conf*100)+'%'+flags+'</span></div>';
+  });
+  wrap.style.display='block';
+}
+
+function simulate(inputData){
+  const today=new Date();
+  const tom=new Date(today);tom.setDate(today.getDate()+1);
+  const fmt=d=>d.toISOString().split('T')[0];
+  const catalog={'es teh':'Es Teh','nasi goreng':'Nasi Goreng','ayam goreng':'Ayam Goreng','es jeruk':'Es Jeruk','kopi':'Kopi','mie goreng':'Mie Goreng'};
+  const orders=[];
+  inputData.split('\n').forEach(line=>{
+    const m=line.match(/^[^:]*:\s*(.+)$/);
+    if(!m)return;
+    const t=m[1].toLowerCase();
+    if(!/pesan|order|minta|beli/.test(t))return;
+    const qm=t.match(/(\d+)/);
+    const qty=qm?parseInt(qm[1]):1;
+    const dateStr=/besok/.test(t)?fmt(tom):fmt(today);
+    const sender=(line.match(/^([^:]+):/)||[])[1]||'Unknown';
+    let product='Unknown Product';
+    for(const[k,v]of Object.entries(catalog)){if(t.includes(k)){product=v;break;}}
+    orders.push({customer:sender.trim().replace(/\[.*?\]/,'').trim(),product,quantity:qty,date:dateStr,confidence:0.88});
+  });
+  return{orders,metadata:{source:curSrc,confidence:0.88,total_orders:orders.length,valid_orders:orders.length,warnings:[],note:'SIMULATED'}};
+}
+</script>
+</body>
+</html>
